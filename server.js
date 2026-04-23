@@ -13,7 +13,15 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(express.json());
+app.use(globalLimiter);
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', apiLimiter);
@@ -21,9 +29,11 @@ app.use('/api/businesses', require('./routes/businesses'));
 app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/sales', require('./routes/sales'));
 
+const INDEX_HTML = path.join(__dirname, 'public', 'index.html');
+
 // SPA catch-all
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(INDEX_HTML);
 });
 
 app.listen(PORT, () => {
