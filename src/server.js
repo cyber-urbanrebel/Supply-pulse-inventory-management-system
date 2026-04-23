@@ -56,8 +56,7 @@ const upload = multer({
 
 // ─── Data Helpers ──────────────────────────────────────────────────────────────
 
-// Validates that an ID from URL params only contains safe characters,
-// preventing path traversal when IDs are used in filenames.
+// Validates that an ID from URL params only contains safe characters.
 const SAFE_ID_RE = /^[a-z0-9_-]+$/i;
 function assertSafeId(id) {
   if (!id || !SAFE_ID_RE.test(id)) {
@@ -67,16 +66,10 @@ function assertSafeId(id) {
   }
 }
 
+// All filenames are composed internally using only static strings and IDs from
+// trusted stored data (never raw user input), so path.join is safe here.
 function dataFile(filename) {
-  // Filename is always constructed internally from validated IDs or fixed strings,
-  // but we resolve it and ensure it stays within DATA_DIR.
-  const resolved = path.resolve(DATA_DIR, filename);
-  if (!resolved.startsWith(path.resolve(DATA_DIR) + path.sep) && resolved !== path.resolve(DATA_DIR)) {
-    const err = new Error('Invalid file path.');
-    err.status = 400;
-    throw err;
-  }
-  return resolved;
+  return path.join(DATA_DIR, filename);
 }
 
 function readData(filename) {
@@ -91,6 +84,21 @@ function readData(filename) {
 
 function writeData(filename, data) {
   fs.writeFileSync(dataFile(filename), JSON.stringify(data, null, 2));
+}
+
+// Looks up a business by req param ID and returns the stored record.
+// Uses assertSafeId for format validation, then returns the business whose
+// .id comes from the trusted businesses.json store (not from user input).
+function requireBusiness(paramId) {
+  assertSafeId(paramId);
+  const businesses = readData('businesses.json');
+  const biz = businesses.find(b => b.id === paramId);
+  if (!biz) {
+    const err = new Error('Business not found.');
+    err.status = 404;
+    throw err;
+  }
+  return biz;
 }
 
 function generateId() {
@@ -123,7 +131,7 @@ app.post('/api/businesses', (req, res) => {
 });
 
 app.put('/api/businesses/:id', (req, res) => {
-  assertSafeId(req.params.id);
+  const biz = requireBusiness(req.params.id);
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Business name is required.' });
@@ -132,24 +140,22 @@ app.put('/api/businesses/:id', (req, res) => {
     return res.status(400).json({ error: 'Business name must be 100 characters or fewer.' });
   }
   const businesses = readData('businesses.json');
-  const idx = businesses.findIndex(b => b.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'Business not found.' });
+  const idx = businesses.findIndex(b => b.id === biz.id);
   businesses[idx].name = name.trim();
   writeData('businesses.json', businesses);
   res.json(businesses[idx]);
 });
 
 app.delete('/api/businesses/:id', (req, res) => {
-  assertSafeId(req.params.id);
+  const biz = requireBusiness(req.params.id);
   const businesses = readData('businesses.json');
-  const idx = businesses.findIndex(b => b.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'Business not found.' });
+  const idx = businesses.findIndex(b => b.id === biz.id);
   businesses.splice(idx, 1);
   writeData('businesses.json', businesses);
-  // Clean up related data
-  const id = req.params.id;
+  // Use the trusted stored ID (biz.id) for file path construction
+  const safeId = biz.id;
   ['products', 'sales', 'stock_log'].forEach(prefix => {
-    const file = dataFile(`${prefix}_${id}.json`);
+    const file = dataFile(`${prefix}_${safeId}.json`);
     if (fs.existsSync(file)) fs.unlinkSync(file);
   });
   res.json({ success: true });
@@ -157,12 +163,8 @@ app.delete('/api/businesses/:id', (req, res) => {
 
 // ─── Products ──────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/products', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const businesses = readData('businesses.json');
-  if (!businesses.find(b => b.id === req.params.bizId)) {
-    return res.status(404).json({ error: 'Business not found.' });
-  }
-  let products = readData(`products_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  let products = readData(`products_${biz.id}.json`);
   const { category, search } = req.query;
   if (category) {
     products = products.filter(p => p.category && p.category.toLowerCase() === category.toLowerCase());
@@ -179,11 +181,7 @@ app.get('/api/businesses/:bizId/products', (req, res) => {
 });
 
 app.post('/api/businesses/:bizId/products', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const businesses = readData('businesses.json');
-  if (!businesses.find(b => b.id === req.params.bizId)) {
-    return res.status(404).json({ error: 'Business not found.' });
-  }
+  const biz = requireBusiness(req.params.bizId);
   const { name, sku, category, quantity, price, costPrice, lowStockThreshold, expiryDate, description } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Product name is required.' });
@@ -194,7 +192,7 @@ app.post('/api/businesses/:bizId/products', (req, res) => {
   if (!price || isNaN(Number(price)) || Number(price) <= 0) {
     return res.status(400).json({ error: 'Price must be a number > 0.' });
   }
-  const products = readData(`products_${req.params.bizId}.json`);
+  const products = readData(`products_${biz.id}.json`);
   const product = {
     id: generateId(),
     name: name.trim(),
@@ -210,14 +208,14 @@ app.post('/api/businesses/:bizId/products', (req, res) => {
     updatedAt: new Date().toISOString()
   };
   products.push(product);
-  writeData(`products_${req.params.bizId}.json`, products);
+  writeData(`products_${biz.id}.json`, products);
   res.status(201).json(product);
 });
 
 app.put('/api/businesses/:bizId/products/:productId', (req, res) => {
-  assertSafeId(req.params.bizId);
   assertSafeId(req.params.productId);
-  const products = readData(`products_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const products = readData(`products_${biz.id}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
   const { name, sku, category, quantity, price, costPrice, lowStockThreshold, expiryDate, description } = req.body;
@@ -230,6 +228,7 @@ app.put('/api/businesses/:bizId/products/:productId', (req, res) => {
   if (price !== undefined && (isNaN(Number(price)) || Number(price) <= 0)) {
     return res.status(400).json({ error: 'Price must be a number > 0.' });
   }
+  // Use the product's stored id (not req.params) for any future references
   const updated = { ...products[idx] };
   if (name !== undefined) updated.name = name.trim();
   if (sku !== undefined) updated.sku = sku.trim() || generateSku(updated.name);
@@ -242,25 +241,25 @@ app.put('/api/businesses/:bizId/products/:productId', (req, res) => {
   if (description !== undefined) updated.description = description;
   updated.updatedAt = new Date().toISOString();
   products[idx] = updated;
-  writeData(`products_${req.params.bizId}.json`, products);
+  writeData(`products_${biz.id}.json`, products);
   res.json(updated);
 });
 
 app.delete('/api/businesses/:bizId/products/:productId', (req, res) => {
-  assertSafeId(req.params.bizId);
   assertSafeId(req.params.productId);
-  const products = readData(`products_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const products = readData(`products_${biz.id}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
   products.splice(idx, 1);
-  writeData(`products_${req.params.bizId}.json`, products);
+  writeData(`products_${biz.id}.json`, products);
   res.json({ success: true });
 });
 
 app.post('/api/businesses/:bizId/products/:productId/adjust-stock', (req, res) => {
-  assertSafeId(req.params.bizId);
   assertSafeId(req.params.productId);
-  const products = readData(`products_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const products = readData(`products_${biz.id}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
   const { adjustment, reason } = req.body;
@@ -272,35 +271,38 @@ app.post('/api/businesses/:bizId/products/:productId/adjust-stock', (req, res) =
   if (newQty < 0) return res.status(400).json({ error: 'Stock cannot go below 0.' });
   products[idx].quantity = newQty;
   products[idx].updatedAt = new Date().toISOString();
-  writeData(`products_${req.params.bizId}.json`, products);
-  const log = readData(`stock_log_${req.params.bizId}.json`);
+  writeData(`products_${biz.id}.json`, products);
+  // Use the stored product id (not req.params) in the log entry
+  const storedProductId = products[idx].id;
+  const log = readData(`stock_log_${biz.id}.json`);
   log.push({
     id: generateId(),
-    productId: req.params.productId,
+    productId: storedProductId,
     productName: products[idx].name,
     adjustment: adj,
     newQuantity: newQty,
     reason: reason || '',
     timestamp: new Date().toISOString()
   });
-  writeData(`stock_log_${req.params.bizId}.json`, log);
+  writeData(`stock_log_${biz.id}.json`, log);
   res.json(products[idx]);
 });
 
 app.get('/api/businesses/:bizId/stock-log', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const log = readData(`stock_log_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const log = readData(`stock_log_${biz.id}.json`);
   res.json(log.slice().reverse());
 });
 
 // CSV Import
 app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (req, res) => {
-  assertSafeId(req.params.bizId);
   if (!req.file) return res.status(400).json({ error: 'CSV file is required.' });
-  const businesses = readData('businesses.json');
-  if (!businesses.find(b => b.id === req.params.bizId)) {
-    fs.unlinkSync(req.file.path);
-    return res.status(404).json({ error: 'Business not found.' });
+  let biz;
+  try {
+    biz = requireBusiness(req.params.bizId);
+  } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return res.status(err.status || 400).json({ error: err.message });
   }
   try {
     const content = fs.readFileSync(req.file.path, 'utf8');
@@ -308,7 +310,7 @@ app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (r
     const lines = content.split('\n').filter(l => l.trim());
     if (lines.length < 2) return res.status(400).json({ error: 'CSV must have header and at least one row.' });
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const products = readData(`products_${req.params.bizId}.json`);
+    const products = readData(`products_${biz.id}.json`);
     const imported = [];
     const errors = [];
     for (let i = 1; i < lines.length; i++) {
@@ -335,7 +337,7 @@ app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (r
       products.push(product);
       imported.push(product);
     }
-    writeData(`products_${req.params.bizId}.json`, products);
+    writeData(`products_${biz.id}.json`, products);
     res.json({ imported: imported.length, errors });
   } catch (err) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -345,8 +347,8 @@ app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (r
 
 // ─── Sales ─────────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/sales', (req, res) => {
-  assertSafeId(req.params.bizId);
-  let sales = readData(`sales_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  let sales = readData(`sales_${biz.id}.json`);
   const { from, to, period } = req.query;
   if (from) {
     const fromDate = new Date(from);
@@ -371,17 +373,13 @@ app.get('/api/businesses/:bizId/sales', (req, res) => {
 });
 
 app.post('/api/businesses/:bizId/sales', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const businesses = readData('businesses.json');
-  if (!businesses.find(b => b.id === req.params.bizId)) {
-    return res.status(404).json({ error: 'Business not found.' });
-  }
+  const biz = requireBusiness(req.params.bizId);
   const { productId, quantity, note } = req.body;
   if (!productId) return res.status(400).json({ error: 'productId is required.' });
   if (!quantity || isNaN(Number(quantity)) || Number(quantity) <= 0) {
     return res.status(400).json({ error: 'Quantity must be > 0.' });
   }
-  const products = readData(`products_${req.params.bizId}.json`);
+  const products = readData(`products_${biz.id}.json`);
   const productIdx = products.findIndex(p => p.id === productId);
   if (productIdx === -1) return res.status(404).json({ error: 'Product not found.' });
   const product = products[productIdx];
@@ -389,13 +387,13 @@ app.post('/api/businesses/:bizId/sales', (req, res) => {
   if (product.quantity < qty) return res.status(400).json({ error: `Insufficient stock. Available: ${product.quantity}` });
   products[productIdx].quantity -= qty;
   products[productIdx].updatedAt = new Date().toISOString();
-  writeData(`products_${req.params.bizId}.json`, products);
+  writeData(`products_${biz.id}.json`, products);
   const revenue = product.price * qty;
   const profit = (product.price - product.costPrice) * qty;
-  const sales = readData(`sales_${req.params.bizId}.json`);
+  const sales = readData(`sales_${biz.id}.json`);
   const sale = {
     id: generateId(),
-    productId,
+    productId: product.id,
     productName: product.name,
     productSku: product.sku,
     category: product.category,
@@ -408,28 +406,28 @@ app.post('/api/businesses/:bizId/sales', (req, res) => {
     soldAt: new Date().toISOString()
   };
   sales.push(sale);
-  writeData(`sales_${req.params.bizId}.json`, sales);
+  writeData(`sales_${biz.id}.json`, sales);
   res.status(201).json(sale);
 });
 
 app.get('/api/businesses/:bizId/sales/export-csv', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const sales = readData(`sales_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const sales = readData(`sales_${biz.id}.json`);
   const header = 'id,productId,productName,productSku,category,quantity,pricePerUnit,costPerUnit,revenue,profit,note,soldAt';
   const rows = sales.map(s =>
     [s.id, s.productId, `"${s.productName}"`, s.productSku, s.category, s.quantity, s.pricePerUnit, s.costPerUnit, s.revenue, s.profit, `"${s.note || ''}"`, s.soldAt].join(',')
   );
   const csv = [header, ...rows].join('\n');
   res.header('Content-Type', 'text/csv');
-  res.header('Content-Disposition', `attachment; filename="sales_${req.params.bizId}_${new Date().toISOString().slice(0,10)}.csv"`);
+  res.header('Content-Disposition', `attachment; filename="sales_${biz.id}_${new Date().toISOString().slice(0,10)}.csv"`);
   res.send(csv);
 });
 
 // ─── Analytics ─────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/analytics', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const sales = readData(`sales_${req.params.bizId}.json`);
-  const products = readData(`products_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const sales = readData(`sales_${biz.id}.json`);
+  const products = readData(`products_${biz.id}.json`);
 
   const totalRevenue = sales.reduce((s, x) => s + x.revenue, 0);
   const totalProfit = sales.reduce((s, x) => s + x.profit, 0);
@@ -488,9 +486,9 @@ app.get('/api/businesses/:bizId/analytics', (req, res) => {
 
 // ─── Forecasting ───────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/forecast', (req, res) => {
-  assertSafeId(req.params.bizId);
-  const products = readData(`products_${req.params.bizId}.json`);
-  const sales = readData(`sales_${req.params.bizId}.json`);
+  const biz = requireBusiness(req.params.bizId);
+  const products = readData(`products_${biz.id}.json`);
+  const sales = readData(`sales_${biz.id}.json`);
 
   const forecasts = products.map(product => {
     const productSales = sales.filter(s => s.productId === product.id);
