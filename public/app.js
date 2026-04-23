@@ -9,6 +9,9 @@ const state = {
   inventoryInterval: null
 };
 
+const INVENTORY_REFRESH_INTERVAL_MS = 30000;
+const TOAST_DURATION_MS = 4000;
+
 // --- API helpers ---
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -45,7 +48,7 @@ function switchTab(tab) {
     case 'businesses': loadBusinesses(); break;
     case 'inventory':
       loadInventory();
-      state.inventoryInterval = setInterval(loadInventory, 30000);
+      state.inventoryInterval = setInterval(loadInventory, INVENTORY_REFRESH_INTERVAL_MS);
       break;
     case 'sales': loadSales(); break;
     case 'alerts': loadAlerts(); break;
@@ -303,7 +306,7 @@ function renderAnalytics(a) {
     </div>
   `;
 
-  const maxRev = a.topProducts.length ? a.topProducts[0].revenue : 1;
+  const maxRev = a.topProducts.length ? Math.max(a.topProducts[0].revenue, 1) : 1;
   document.getElementById('top-products-chart').innerHTML = a.topProducts.length
     ? a.topProducts.map(p => `
       <div class="bar-row">
@@ -458,7 +461,14 @@ function escHtml(str) {
 }
 
 function escAttr(str) {
-  return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '&#10;')
+    .replace(/\r/g, '&#13;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function showError(msg) {
@@ -469,7 +479,7 @@ function showError(msg) {
   toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#e17055;color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-size:0.9rem;max-width:360px;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
   toast.textContent = '⚠️ ' + msg;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+  setTimeout(() => toast.remove(), TOAST_DURATION_MS);
 }
 
 // --- Init ---

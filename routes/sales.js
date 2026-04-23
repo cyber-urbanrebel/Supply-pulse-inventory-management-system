@@ -104,11 +104,15 @@ router.get('/:businessId/forecast/:productId', (req, res) => {
     });
 
   const days = Object.keys(dailySales).sort();
-  // window1 = days[0..9], window2 = days[10..19], window3 = days[20..29]
+  // Weighted moving average: oldest window weight=1, middle=2, recent=3
+  const WEIGHT_OLDEST = 1;
+  const WEIGHT_MIDDLE = 2;
+  const WEIGHT_RECENT = 3;
+  const WEIGHT_SUM = WEIGHT_OLDEST + WEIGHT_MIDDLE + WEIGHT_RECENT;
   const w1 = days.slice(0, 10).reduce((sum, d) => sum + dailySales[d], 0) / 10;
   const w2 = days.slice(10, 20).reduce((sum, d) => sum + dailySales[d], 0) / 10;
   const w3 = days.slice(20, 30).reduce((sum, d) => sum + dailySales[d], 0) / 10;
-  const weightedAvgDaily = (w1 * 1 + w2 * 2 + w3 * 3) / 6;
+  const weightedAvgDaily = (w1 * WEIGHT_OLDEST + w2 * WEIGHT_MIDDLE + w3 * WEIGHT_RECENT) / WEIGHT_SUM;
   const forecastedDemand = weightedAvgDaily * 7;
   const recommendedRestock = Math.max(0, Math.ceil(forecastedDemand - product.quantity));
 
