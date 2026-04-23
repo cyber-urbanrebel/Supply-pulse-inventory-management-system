@@ -554,18 +554,27 @@ app.get('/api/businesses/:bizId/forecast', (req, res) => {
 });
 
 // ─── Daily Backup ──────────────────────────────────────────────────────────────
-cron.schedule('0 0 * * *', () => {
+let backupInProgress = false;
+const backupTask = cron.schedule('0 0 * * *', () => {
+  if (backupInProgress) return;
+  backupInProgress = true;
   try {
     const date = new Date().toISOString().slice(0, 10);
     const backupDir = path.join(DATA_DIR, 'backups', date);
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
     const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
     files.forEach(file => {
-      fs.copyFileSync(path.join(DATA_DIR, file), path.join(backupDir, file));
+      const src = path.join(DATA_DIR, file);
+      const dst = path.join(backupDir, `${file}.tmp`);
+      const final = path.join(backupDir, file);
+      fs.copyFileSync(src, dst);
+      fs.renameSync(dst, final); // atomic replace — avoids partial backup files
     });
     console.log(`[Backup] Backed up ${files.length} files to ${backupDir}`);
   } catch (err) {
     console.error('[Backup] Failed to create backup:', err.message);
+  } finally {
+    backupInProgress = false;
   }
 });
 
@@ -581,6 +590,20 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`SupplyPulse server running on http://localhost:${PORT}`);
 });
+
+function gracefulShutdown(signal) {
+  console.log(`[Shutdown] ${signal} received, shutting down gracefully...`);
+  backupTask.stop();
+  server.close(() => {
+    console.log('[Shutdown] HTTP server closed.');
+    process.exit(0);
+  });
+  // Force exit after 10 seconds if connections are lingering
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
