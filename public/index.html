@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supply Pulse</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-brand">
+      <span class="logo">📦</span>
+      <h1>Supply Pulse</h1>
+    </div>
+    <div id="active-business-display">No business selected</div>
+  </header>
+  
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="businesses">🏢 Businesses</button>
+    <button class="tab-btn" data-tab="inventory">📋 Inventory</button>
+    <button class="tab-btn" data-tab="sales">💰 Sales</button>
+    <button class="tab-btn" data-tab="alerts">🚨 Alerts</button>
+    <button class="tab-btn" data-tab="forecast">🔮 Forecast</button>
+  </nav>
+
+  <main>
+    <!-- Businesses Tab -->
+    <section id="tab-businesses" class="tab-content active">
+      <div class="card">
+        <h2>Add Business</h2>
+        <form id="add-business-form">
+          <input type="text" id="business-name-input" placeholder="Business name" required>
+          <button type="submit" class="btn btn-primary">Add Business</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Your Businesses</h2>
+        <div id="businesses-list"></div>
+      </div>
+    </section>
+
+    <!-- Inventory Tab -->
+    <section id="tab-inventory" class="tab-content">
+      <div id="inventory-requires-business" class="requires-business hidden">Please select a business first.</div>
+      <div id="inventory-content">
+        <div class="card">
+          <h2>Add Product</h2>
+          <form id="add-product-form">
+            <div class="form-row">
+              <input type="text" id="product-name" placeholder="Product Name" required>
+              <input type="text" id="product-sku" placeholder="SKU" required>
+              <input type="text" id="product-category" placeholder="Category">
+            </div>
+            <div class="form-row">
+              <input type="number" id="product-quantity" placeholder="Quantity" min="0" value="0">
+              <input type="number" id="product-reorder" placeholder="Reorder Level" min="0" value="10">
+              <input type="number" id="product-price" placeholder="Price" min="0" step="0.01" value="0">
+              <input type="number" id="product-cost" placeholder="Cost" min="0" step="0.01" value="0">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Product</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Products</h2>
+          <div class="table-wrapper">
+            <table id="inventory-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>SKU</th><th>Category</th>
+                  <th>Quantity</th><th>Reorder Level</th>
+                  <th>Price</th><th>Cost</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sales Tab -->
+    <section id="tab-sales" class="tab-content">
+      <div id="sales-requires-business" class="requires-business hidden">Please select a business first.</div>
+      <div id="sales-content">
+        <div class="card">
+          <h2>Record Sale</h2>
+          <form id="record-sale-form">
+            <select id="sale-product-select" required>
+              <option value="">-- Select Product --</option>
+            </select>
+            <input type="number" id="sale-quantity" placeholder="Quantity" min="1" value="1" required>
+            <button type="submit" class="btn btn-primary">Record Sale</button>
+          </form>
+        </div>
+        <div class="card" id="analytics-card">
+          <h2>Analytics</h2>
+          <div id="analytics-summary"></div>
+          <h3>Top Products by Revenue</h3>
+          <div id="top-products-chart"></div>
+          <h3>Sales – Last 30 Days</h3>
+          <div id="sales-chart"></div>
+        </div>
+        <div class="card">
+          <h2>Sales History</h2>
+          <div class="table-wrapper">
+            <table id="sales-table">
+              <thead>
+                <tr><th>Date</th><th>Product</th><th>Quantity</th><th>Revenue</th></tr>
+              </thead>
+              <tbody id="sales-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Alerts Tab -->
+    <section id="tab-alerts" class="tab-content">
+      <div id="alerts-requires-business" class="requires-business hidden">Please select a business first.</div>
+      <div id="alerts-content">
+        <div class="card">
+          <div class="card-header-row">
+            <h2>Low Stock Alerts</h2>
+            <button id="refresh-alerts-btn" class="btn btn-secondary">🔄 Refresh</button>
+          </div>
+          <div id="alerts-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Forecast Tab -->
+    <section id="tab-forecast" class="tab-content">
+      <div id="forecast-requires-business" class="requires-business hidden">Please select a business first.</div>
+      <div id="forecast-content">
+        <div class="card">
+          <h2>Demand Forecast</h2>
+          <div class="form-row">
+            <select id="forecast-product-select">
+              <option value="">-- Select Product --</option>
+            </select>
+            <button id="run-forecast-btn" class="btn btn-primary">Run Forecast</button>
+          </div>
+          <div id="forecast-result"></div>
+          <div class="info-box">
+            <strong>How it works:</strong> Weighted moving average over the last 30 days of sales data.
+            More recent sales are weighted higher (3×) than older data (1×), giving a 7-day demand projection.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit Product Modal -->
+  <div id="edit-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Product</h3>
+        <button id="close-modal" class="btn-close">✕</button>
+      </div>
+      <form id="edit-product-form">
+        <input type="hidden" id="edit-product-id">
+        <div class="form-row">
+          <input type="text" id="edit-name" placeholder="Product Name" required>
+          <input type="text" id="edit-sku" placeholder="SKU">
+          <input type="text" id="edit-category" placeholder="Category">
+        </div>
+        <div class="form-row">
+          <input type="number" id="edit-quantity" placeholder="Quantity" min="0">
+          <input type="number" id="edit-reorder" placeholder="Reorder Level" min="0">
+          <input type="number" id="edit-price" placeholder="Price" min="0" step="0.01">
+          <input type="number" id="edit-cost" placeholder="Cost" min="0" step="0.01">
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </form>
+    </div>
+  </div>
+  <div id="modal-overlay" class="hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
