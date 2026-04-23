@@ -1,0 +1,97 @@
+{
+  "businesses": [
+    {
+      "id": "biz_mo90fgco_j5f70xb",
+      "name": "urban CREW",
+      "industry": "RETAIL",
+      "currency": "KES 100000",
+      "createdAt": 1776799302792
+    },
+    {
+      "id": "biz_mo90ksv8_arfue2r",
+      "name": "Wakan",
+      "industry": "general",
+      "currency": "KES",
+      "createdAt": 1776799552292
+    }
+  ],
+  "products": [
+    {
+      "id": "prd_mo90t6v7_ncv9sr6",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "name": "clanks",
+      "sku": "6655",
+      "category": "clothes",
+      "unitCost": 444,
+      "unitPrice": 3333,
+      "stockOnHand": 221,
+      "safetyStock": 14,
+      "reorderQty": 54,
+      "leadTimeDays": 11,
+      "supplierId": null,
+      "autoReorder": false,
+      "createdAt": 1776799943683
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "sup_mo90u5zz_9qf8eez",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "name": "maiko",
+      "email": "tttg@gmail.com",
+      "phone": "0728763053",
+      "leadTimeDays": 7,
+      "createdAt": 1776799989215
+    }
+  ],
+  "sales": [
+    {
+      "id": "sale_mo9o6l9d_2ddua4o",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "productId": "prd_mo90t6v7_ncv9sr6",
+      "quantity": 1,
+      "unitPrice": 3333,
+      "createdAt": 1776839200033
+    }
+  ],
+  "inventoryMovements": [
+    {
+      "id": "mov_mo90t6v7_08gwrif",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "productId": "prd_mo90t6v7_ncv9sr6",
+      "type": "initial_stock",
+      "quantity": 222,
+      "reference": "product_create",
+      "createdAt": 1776799943683
+    },
+    {
+      "id": "mov_mo9o6l9d_l9i8vhj",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "productId": "prd_mo90t6v7_ncv9sr6",
+      "type": "sale",
+      "quantity": -1,
+      "reference": "sale_mo9o6l9d_2ddua4o",
+      "createdAt": 1776839200033
+    }
+  ],
+  "purchaseOrders": [
+    {
+      "id": "po_mo90uco6_1a7ytnj",
+      "businessId": "biz_mo90ksv8_arfue2r",
+      "supplierId": "sup_mo90u5zz_9qf8eez",
+      "status": "pending",
+      "source": "manual",
+      "items": [
+        {
+          "productId": "prd_mo90t6v7_ncv9sr6",
+          "quantity": 10,
+          "unitCost": 444,
+          "lineTotal": 4440
+        }
+      ],
+      "total": 4440,
+      "createdAt": 1776799997862,
+      "receivedAt": null
+    }
+  ]
+}

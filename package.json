@@ -1,0 +1,17 @@
+{
+  "name": "supplypulse",
+  "version": "1.0.0",
+  "description": "Inventory management and demand forecasting platform for any business",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3"
+  }
+}

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>SupplyPulse | Inventory Intelligence</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+	<div class="bg-aurora" aria-hidden="true"></div>
+	<div class="app-shell">
+		<aside id="sidebar">
+			<div class="brand-wrap">
+				<div class="brand-dot"></div>
+				<div>
+					<p class="brand-eyebrow">Ops Control</p>
+					<h1 class="brand-title">SupplyPulse</h1>
+				</div>
+			</div>
+
+			<div class="business-switcher">
+				<label for="businessSelect">Business Context</label>
+				<select id="businessSelect"></select>
+				<button id="newBizBtn" class="btn btn-primary btn-full">+ New Business</button>
+			</div>
+
+			<nav class="main-nav">
+				<a href="#" class="nav-item active" data-view="dashboard">Dashboard</a>
+				<a href="#" class="nav-item" data-view="products">Products</a>
+				<a href="#" class="nav-item" data-view="suppliers">Suppliers</a>
+				<a href="#" class="nav-item" data-view="sales">Sales</a>
+				<a href="#" class="nav-item" data-view="orders">Purchase Orders</a>
+				<a href="#" class="nav-item" data-view="forecast">Demand Forecast</a>
+			</nav>
+
+			<div class="sidebar-insight">
+				<h3>Operations Pulse</h3>
+				<p id="sidebarPulseText">Add a business and start recording data to unlock smart supply chain insights.</p>
+			</div>
+
+			<footer class="sidebar-footer">
+				<p>Forecast Horizon: 14 days</p>
+				<p>Auto-Restock Cycle: 5 min</p>
+			</footer>
+		</aside>
+
+		<main id="main">
+			<header class="topbar">
+				<div>
+					<p class="topbar-kicker">Realtime Inventory Intelligence</p>
+					<h2 id="view-title">Dashboard</h2>
+				</div>
+				<div class="topbar-actions">
+					<button id="refreshBtn" class="btn btn-ghost">Refresh Data</button>
+				</div>
+			</header>
+
+			<section id="view-dashboard" class="view active">
+				<div id="kpiGrid" class="kpi-grid"></div>
+
+				<div class="panel-grid two-col">
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Risk Watchlist</h3>
+							<span class="chip chip-danger">Priority</span>
+						</div>
+						<div id="lowStockList" class="stack-list"></div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Pending Receipts</h3>
+							<span class="chip chip-warn">Inbound</span>
+						</div>
+						<div id="pendingPoList" class="stack-list"></div>
+					</article>
+				</div>
+
+				<div class="panel-grid two-col">
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Strategic Insights</h3>
+						</div>
+						<div id="dashboardInsights" class="insight-tiles"></div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Executive Brief</h3>
+						</div>
+						<div id="executiveBrief" class="rich-copy"></div>
+					</article>
+				</div>
+
+				<article class="panel">
+					<div class="panel-head">
+						<h3>Recent Sales Activity</h3>
+					</div>
+					<div class="table-wrap">
+						<table id="recentSalesTable" class="data-table"></table>
+					</div>
+				</article>
+			</section>
+
+			<section id="view-products" class="view">
+				<div class="section-head">
+					<div>
+						<h3>Product Portfolio</h3>
+						<p>Inventory health, margin balance, and category pressure in one place.</p>
+					</div>
+					<button id="addProductBtn" class="btn btn-primary">+ Add Product</button>
+				</div>
+
+				<article class="panel">
+					<div class="table-wrap">
+						<table id="productsTable" class="data-table"></table>
+					</div>
+				</article>
+
+				<div class="panel-grid two-col">
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Category Health</h3>
+						</div>
+						<div id="categoryHealth" class="stack-list"></div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Margin Focus</h3>
+						</div>
+						<div id="marginFocus" class="stack-list"></div>
+					</article>
+				</div>
+			</section>
+
+			<section id="view-suppliers" class="view">
+				<div class="section-head">
+					<div>
+						<h3>Supplier Network</h3>
+						<p>Track reliability, lead time exposure, and inbound concentration risks.</p>
+					</div>
+					<button id="addSupplierBtn" class="btn btn-primary">+ Add Supplier</button>
+				</div>
+
+				<article class="panel">
+					<div class="table-wrap">
+						<table id="suppliersTable" class="data-table"></table>
+					</div>
+				</article>
+
+				<article class="panel">
+					<div class="panel-head">
+						<h3>Supplier Performance Narrative</h3>
+					</div>
+					<div id="supplierPerformance" class="insight-tiles"></div>
+				</article>
+			</section>
+
+			<section id="view-sales" class="view">
+				<div class="section-head">
+					<div>
+						<h3>Sales Ledger</h3>
+						<p>Unit movement, pricing behavior, and demand intensity over time.</p>
+					</div>
+					<button id="recordSaleBtn" class="btn btn-primary">+ Record Sale</button>
+				</div>
+
+				<article class="panel">
+					<div class="table-wrap">
+						<table id="salesTable" class="data-table"></table>
+					</div>
+				</article>
+
+				<div class="panel-grid two-col">
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Demand Momentum</h3>
+						</div>
+						<div id="demandMomentum" class="rich-copy"></div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Revenue Distribution</h3>
+						</div>
+						<div id="revenueDistribution" class="stack-list"></div>
+					</article>
+				</div>
+			</section>
+
+			<section id="view-orders" class="view">
+				<div class="section-head">
+					<div>
+						<h3>Purchase Orders</h3>
+						<p>Manual and auto-generated procurement flow with receiving control.</p>
+					</div>
+					<button id="createPoBtn" class="btn btn-primary">+ Create PO</button>
+				</div>
+
+				<article class="panel">
+					<div class="table-wrap">
+						<table id="poTable" class="data-table"></table>
+					</div>
+				</article>
+
+				<article class="panel">
+					<div class="panel-head">
+						<h3>Pipeline Health</h3>
+					</div>
+					<div id="pipelineHealth" class="insight-tiles"></div>
+				</article>
+			</section>
+
+			<section id="view-forecast" class="view">
+				<div class="section-head">
+					<div>
+						<h3>Forecast Center</h3>
+						<p>Rolling 14-day demand model with reorder guidance and stockout risk.</p>
+					</div>
+				</div>
+
+				<article class="panel">
+					<div class="table-wrap">
+						<table id="forecastTable" class="data-table"></table>
+					</div>
+				</article>
+
+				<div class="panel-grid two-col">
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Restock Recommendations</h3>
+						</div>
+						<div id="restockRecommendations" class="stack-list"></div>
+					</article>
+
+					<article class="panel">
+						<div class="panel-head">
+							<h3>Forecast Narrative</h3>
+						</div>
+						<div id="forecastNarrative" class="rich-copy"></div>
+					</article>
+				</div>
+			</section>
+		</main>
+	</div>
+
+	<div id="modalOverlay" class="modal-overlay hidden" onclick="closeModal(event)">
+		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+			<div class="modal-header">
+				<h3 id="modalTitle">Modal Title</h3>
+				<button class="modal-close" onclick="closeModal()">x</button>
+			</div>
+			<div id="modalBody" class="modal-body"></div>
+		</div>
+	</div>
+
+	<div id="toast" class="toast hidden"></div>
+	<script src="/app.js"></script>
+</body>
+</html>
