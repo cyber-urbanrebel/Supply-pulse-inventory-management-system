@@ -30,9 +30,13 @@ app.use(limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
+// CORS — restrict to configured origin (defaults to same-origin / localhost)
+const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || `http://localhost:${PORT}`;
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (!origin || origin === ALLOWED_ORIGIN) {
+    res.header('Access-Control-Allow-Origin', origin || ALLOWED_ORIGIN);
+  }
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
@@ -42,8 +46,10 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ─── Multer Setup ──────────────────────────────────────────────────────────────
+// Use memoryStorage so CSV content is available as req.file.buffer — no temp
+// files are written, which avoids any file-path taint from user-controlled data.
 const upload = multer({
-  dest: path.join(DATA_DIR, 'uploads'),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
@@ -297,52 +303,40 @@ app.get('/api/businesses/:bizId/stock-log', (req, res) => {
 // CSV Import
 app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'CSV file is required.' });
-  let biz;
-  try {
-    biz = requireBusiness(req.params.bizId);
-  } catch (err) {
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    return res.status(err.status || 400).json({ error: err.message });
+  const biz = requireBusiness(req.params.bizId);
+  const content = req.file.buffer.toString('utf8');
+  const lines = content.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return res.status(400).json({ error: 'CSV must have header and at least one row.' });
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const products = readData(`products_${biz.id}.json`);
+  const imported = [];
+  const errors = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+    if (!row.name) { errors.push(`Row ${i + 1}: name is required`); continue; }
+    if (!row.quantity || isNaN(Number(row.quantity)) || Number(row.quantity) < 0) { errors.push(`Row ${i + 1}: invalid quantity`); continue; }
+    if (!row.price || isNaN(Number(row.price)) || Number(row.price) <= 0) { errors.push(`Row ${i + 1}: invalid price`); continue; }
+    const product = {
+      id: generateId(),
+      name: row.name,
+      sku: row.sku || generateSku(row.name),
+      category: row.category || 'General',
+      quantity: Number(row.quantity),
+      price: Number(row.price),
+      costPrice: row.costprice ? Number(row.costprice) : 0,
+      lowStockThreshold: row.lowstockthreshold ? Number(row.lowstockthreshold) : 10,
+      expiryDate: row.expirydate || null,
+      description: row.description || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    products.push(product);
+    imported.push(product);
   }
-  try {
-    const content = fs.readFileSync(req.file.path, 'utf8');
-    fs.unlinkSync(req.file.path);
-    const lines = content.split('\n').filter(l => l.trim());
-    if (lines.length < 2) return res.status(400).json({ error: 'CSV must have header and at least one row.' });
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const products = readData(`products_${biz.id}.json`);
-    const imported = [];
-    const errors = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      const row = {};
-      headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
-      if (!row.name) { errors.push(`Row ${i + 1}: name is required`); continue; }
-      if (!row.quantity || isNaN(Number(row.quantity)) || Number(row.quantity) < 0) { errors.push(`Row ${i + 1}: invalid quantity`); continue; }
-      if (!row.price || isNaN(Number(row.price)) || Number(row.price) <= 0) { errors.push(`Row ${i + 1}: invalid price`); continue; }
-      const product = {
-        id: generateId(),
-        name: row.name,
-        sku: row.sku || generateSku(row.name),
-        category: row.category || 'General',
-        quantity: Number(row.quantity),
-        price: Number(row.price),
-        costPrice: row.costprice ? Number(row.costprice) : 0,
-        lowStockThreshold: row.lowstockthreshold ? Number(row.lowstockthreshold) : 10,
-        expiryDate: row.expirydate || null,
-        description: row.description || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      products.push(product);
-      imported.push(product);
-    }
-    writeData(`products_${biz.id}.json`, products);
-    res.json({ imported: imported.length, errors });
-  } catch (err) {
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    throw err;
-  }
+  writeData(`products_${biz.id}.json`, products);
+  res.json({ imported: imported.length, errors });
 });
 
 // ─── Sales ─────────────────────────────────────────────────────────────────────
