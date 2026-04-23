@@ -312,7 +312,7 @@ function renderAnalytics(a) {
       <div class="bar-row">
         <div class="bar-label" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
         <div class="bar-track">
-          <div class="bar-fill" style="width:${Math.max(2, (p.revenue / maxRev * 100).toFixed(1))}%"></div>
+          <div class="bar-fill" style="width:${Math.max(2, ((p.revenue / maxRev) * 100).toFixed(1))}%"></div>
         </div>
         <div class="bar-value">$${Number(p.revenue).toFixed(0)}</div>
       </div>
