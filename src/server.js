@@ -55,8 +55,28 @@ const upload = multer({
 });
 
 // ─── Data Helpers ──────────────────────────────────────────────────────────────
+
+// Validates that an ID from URL params only contains safe characters,
+// preventing path traversal when IDs are used in filenames.
+const SAFE_ID_RE = /^[a-z0-9_-]+$/i;
+function assertSafeId(id) {
+  if (!id || !SAFE_ID_RE.test(id)) {
+    const err = new Error('Invalid ID format.');
+    err.status = 400;
+    throw err;
+  }
+}
+
 function dataFile(filename) {
-  return path.join(DATA_DIR, filename);
+  // Filename is always constructed internally from validated IDs or fixed strings,
+  // but we resolve it and ensure it stays within DATA_DIR.
+  const resolved = path.resolve(DATA_DIR, filename);
+  if (!resolved.startsWith(path.resolve(DATA_DIR) + path.sep) && resolved !== path.resolve(DATA_DIR)) {
+    const err = new Error('Invalid file path.');
+    err.status = 400;
+    throw err;
+  }
+  return resolved;
 }
 
 function readData(filename) {
@@ -103,6 +123,7 @@ app.post('/api/businesses', (req, res) => {
 });
 
 app.put('/api/businesses/:id', (req, res) => {
+  assertSafeId(req.params.id);
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Business name is required.' });
@@ -119,6 +140,7 @@ app.put('/api/businesses/:id', (req, res) => {
 });
 
 app.delete('/api/businesses/:id', (req, res) => {
+  assertSafeId(req.params.id);
   const businesses = readData('businesses.json');
   const idx = businesses.findIndex(b => b.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Business not found.' });
@@ -135,6 +157,7 @@ app.delete('/api/businesses/:id', (req, res) => {
 
 // ─── Products ──────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/products', (req, res) => {
+  assertSafeId(req.params.bizId);
   const businesses = readData('businesses.json');
   if (!businesses.find(b => b.id === req.params.bizId)) {
     return res.status(404).json({ error: 'Business not found.' });
@@ -156,6 +179,7 @@ app.get('/api/businesses/:bizId/products', (req, res) => {
 });
 
 app.post('/api/businesses/:bizId/products', (req, res) => {
+  assertSafeId(req.params.bizId);
   const businesses = readData('businesses.json');
   if (!businesses.find(b => b.id === req.params.bizId)) {
     return res.status(404).json({ error: 'Business not found.' });
@@ -191,6 +215,8 @@ app.post('/api/businesses/:bizId/products', (req, res) => {
 });
 
 app.put('/api/businesses/:bizId/products/:productId', (req, res) => {
+  assertSafeId(req.params.bizId);
+  assertSafeId(req.params.productId);
   const products = readData(`products_${req.params.bizId}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
@@ -221,6 +247,8 @@ app.put('/api/businesses/:bizId/products/:productId', (req, res) => {
 });
 
 app.delete('/api/businesses/:bizId/products/:productId', (req, res) => {
+  assertSafeId(req.params.bizId);
+  assertSafeId(req.params.productId);
   const products = readData(`products_${req.params.bizId}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
@@ -230,6 +258,8 @@ app.delete('/api/businesses/:bizId/products/:productId', (req, res) => {
 });
 
 app.post('/api/businesses/:bizId/products/:productId/adjust-stock', (req, res) => {
+  assertSafeId(req.params.bizId);
+  assertSafeId(req.params.productId);
   const products = readData(`products_${req.params.bizId}.json`);
   const idx = products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found.' });
@@ -258,12 +288,14 @@ app.post('/api/businesses/:bizId/products/:productId/adjust-stock', (req, res) =
 });
 
 app.get('/api/businesses/:bizId/stock-log', (req, res) => {
+  assertSafeId(req.params.bizId);
   const log = readData(`stock_log_${req.params.bizId}.json`);
   res.json(log.slice().reverse());
 });
 
 // CSV Import
 app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (req, res) => {
+  assertSafeId(req.params.bizId);
   if (!req.file) return res.status(400).json({ error: 'CSV file is required.' });
   const businesses = readData('businesses.json');
   if (!businesses.find(b => b.id === req.params.bizId)) {
@@ -313,6 +345,7 @@ app.post('/api/businesses/:bizId/products/import-csv', upload.single('file'), (r
 
 // ─── Sales ─────────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/sales', (req, res) => {
+  assertSafeId(req.params.bizId);
   let sales = readData(`sales_${req.params.bizId}.json`);
   const { from, to, period } = req.query;
   if (from) {
@@ -338,6 +371,7 @@ app.get('/api/businesses/:bizId/sales', (req, res) => {
 });
 
 app.post('/api/businesses/:bizId/sales', (req, res) => {
+  assertSafeId(req.params.bizId);
   const businesses = readData('businesses.json');
   if (!businesses.find(b => b.id === req.params.bizId)) {
     return res.status(404).json({ error: 'Business not found.' });
@@ -379,6 +413,7 @@ app.post('/api/businesses/:bizId/sales', (req, res) => {
 });
 
 app.get('/api/businesses/:bizId/sales/export-csv', (req, res) => {
+  assertSafeId(req.params.bizId);
   const sales = readData(`sales_${req.params.bizId}.json`);
   const header = 'id,productId,productName,productSku,category,quantity,pricePerUnit,costPerUnit,revenue,profit,note,soldAt';
   const rows = sales.map(s =>
@@ -392,6 +427,7 @@ app.get('/api/businesses/:bizId/sales/export-csv', (req, res) => {
 
 // ─── Analytics ─────────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/analytics', (req, res) => {
+  assertSafeId(req.params.bizId);
   const sales = readData(`sales_${req.params.bizId}.json`);
   const products = readData(`products_${req.params.bizId}.json`);
 
@@ -452,6 +488,7 @@ app.get('/api/businesses/:bizId/analytics', (req, res) => {
 
 // ─── Forecasting ───────────────────────────────────────────────────────────────
 app.get('/api/businesses/:bizId/forecast', (req, res) => {
+  assertSafeId(req.params.bizId);
   const products = readData(`products_${req.params.bizId}.json`);
   const sales = readData(`sales_${req.params.bizId}.json`);
 
@@ -526,14 +563,18 @@ app.get('/api/businesses/:bizId/forecast', (req, res) => {
 
 // ─── Daily Backup ──────────────────────────────────────────────────────────────
 cron.schedule('0 0 * * *', () => {
-  const date = new Date().toISOString().slice(0, 10);
-  const backupDir = path.join(DATA_DIR, 'backups', date);
-  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-  const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
-  files.forEach(file => {
-    fs.copyFileSync(path.join(DATA_DIR, file), path.join(backupDir, file));
-  });
-  console.log(`[Backup] Backed up ${files.length} files to ${backupDir}`);
+  try {
+    const date = new Date().toISOString().slice(0, 10);
+    const backupDir = path.join(DATA_DIR, 'backups', date);
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
+    files.forEach(file => {
+      fs.copyFileSync(path.join(DATA_DIR, file), path.join(backupDir, file));
+    });
+    console.log(`[Backup] Backed up ${files.length} files to ${backupDir}`);
+  } catch (err) {
+    console.error('[Backup] Failed to create backup:', err.message);
+  }
 });
 
 // ─── Global Error Handler ──────────────────────────────────────────────────────
@@ -543,7 +584,9 @@ app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: 'File too large. Max 5MB.' });
   }
-  res.status(500).json({ error: 'Internal server error.' });
+  const status = err.status || 500;
+  const message = status < 500 ? err.message : 'Internal server error.';
+  res.status(status).json({ error: message });
 });
 
 app.listen(PORT, () => {

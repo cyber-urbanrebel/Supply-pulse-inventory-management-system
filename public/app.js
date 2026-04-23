@@ -540,7 +540,12 @@ function closeAdjustModal() {
 async function saveAdjust(e) {
   e.preventDefault();
   const productId = document.getElementById('adjust-product-id').value;
-  const adjustment = Number(document.getElementById('adjust-amount').value);
+  const rawVal = document.getElementById('adjust-amount').value.trim();
+  if (rawVal === '' || isNaN(Number(rawVal))) {
+    showToast('Please enter a valid number for the adjustment.', 'warning');
+    return;
+  }
+  const adjustment = Number(rawVal);
   const reason = document.getElementById('adjust-reason').value;
   try {
     await api('POST', `/api/businesses/${state.currentBusiness.id}/products/${productId}/adjust-stock`, { adjustment, reason });
