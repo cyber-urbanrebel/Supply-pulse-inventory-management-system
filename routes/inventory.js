@@ -35,11 +35,15 @@ router.put('/:businessId/:productId', (req, res) => {
   const idx = business.products.findIndex(p => p.id === req.params.productId);
   if (idx === -1) return res.status(404).json({ error: 'Product not found' });
   const allowed = ['name', 'sku', 'category', 'quantity', 'reorderLevel', 'price', 'cost'];
+  const numericFields = ['quantity', 'reorderLevel', 'price', 'cost'];
   allowed.forEach(field => {
     if (req.body[field] !== undefined) {
-      business.products[idx][field] = ['quantity', 'reorderLevel', 'price', 'cost'].includes(field)
-        ? Number(req.body[field])
-        : req.body[field];
+      if (numericFields.includes(field)) {
+        const num = Number(req.body[field]);
+        if (!isNaN(num)) business.products[idx][field] = num;
+      } else {
+        business.products[idx][field] = req.body[field];
+      }
     }
   });
   store.saveBusiness(business);

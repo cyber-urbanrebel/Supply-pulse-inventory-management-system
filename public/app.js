@@ -168,7 +168,7 @@ function renderInventory() {
 
 async function saveQty(productId) {
   const val = parseInt(document.getElementById(`qty-${productId}`).value, 10);
-  if (isNaN(val) || val < 0) return;
+  if (isNaN(val) || val < 0) { showError('Please enter a valid non-negative quantity'); return; }
   try {
     await api('PUT', `/inventory/${state.selectedBusinessId}/${productId}`, { quantity: val });
     await loadInventory();

@@ -12,9 +12,10 @@ router.get('/:businessId', (req, res) => {
 router.post('/:businessId', (req, res) => {
   const business = store.getBusiness(req.params.businessId);
   if (!business) return res.status(404).json({ error: 'Business not found' });
-  const { productId, quantity } = req.body;
-  if (!productId || !quantity || quantity < 1) {
-    return res.status(400).json({ error: 'productId and quantity (>=1) are required' });
+  const { productId } = req.body;
+  const quantity = Number(req.body.quantity);
+  if (!productId || isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)) {
+    return res.status(400).json({ error: 'productId and a positive integer quantity are required' });
   }
   const product = business.products.find(p => p.id === productId);
   if (!product) return res.status(404).json({ error: 'Product not found' });
