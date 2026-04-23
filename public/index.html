@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SupplyPulse - Inventory Management</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- App Shell -->
+  <div class="app-shell" id="app-shell">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">📦</span>
+          <span class="logo-text">SupplyPulse</span>
+        </div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" title="Close sidebar">✕</button>
+      </div>
+
+      <div class="business-selector" id="business-selector">
+        <select id="business-select" title="Select business">
+          <option value="">-- Select Business --</option>
+        </select>
+        <button id="new-business-btn" class="btn btn-sm btn-primary" title="New business">+</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span>
+        </a>
+
+        <div class="nav-section">
+          <div class="nav-section-header" data-section="inventory">
+            <span class="nav-icon">📋</span><span class="nav-label">Inventory</span>
+            <span class="nav-chevron">▾</span>
+          </div>
+          <div class="nav-section-body" id="section-inventory">
+            <a href="#" class="nav-item nav-sub" data-view="products">Products</a>
+            <a href="#" class="nav-item nav-sub" data-view="categories">Categories</a>
+            <a href="#" class="nav-item nav-sub" data-view="stock-log">Stock Log</a>
+            <a href="#" class="nav-item nav-sub" data-view="import-csv">Import CSV</a>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-header" data-section="sales">
+            <span class="nav-icon">💰</span><span class="nav-label">Sales</span>
+            <span class="nav-chevron">▾</span>
+          </div>
+          <div class="nav-section-body" id="section-sales">
+            <a href="#" class="nav-item nav-sub" data-view="record-sale">Record Sale</a>
+            <a href="#" class="nav-item nav-sub" data-view="sales-history">Sales History</a>
+            <a href="#" class="nav-item nav-sub" data-view="export-csv">Export CSV</a>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-header" data-section="analytics">
+            <span class="nav-icon">📊</span><span class="nav-label">Analytics</span>
+            <span class="nav-chevron">▾</span>
+          </div>
+          <div class="nav-section-body" id="section-analytics">
+            <a href="#" class="nav-item nav-sub" data-view="charts">Charts</a>
+            <a href="#" class="nav-item nav-sub" data-view="profit-report">Profit Report</a>
+            <a href="#" class="nav-item nav-sub" data-view="best-worst">Best/Worst Sellers</a>
+          </div>
+        </div>
+
+        <a href="#" class="nav-item" data-view="forecast">
+          <span class="nav-icon">🤖</span><span class="nav-label">AI Forecast</span>
+        </a>
+
+        <a href="#" class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <button class="hamburger-btn" id="hamburger-btn" title="Toggle sidebar">☰</button>
+        <h1 class="page-title" id="page-title">Dashboard</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-icon theme-toggle" id="theme-toggle" title="Toggle dark/light mode">🌙</button>
+        </div>
+      </header>
+
+      <main class="main-content" id="main-content">
+
+        <!-- ── No Business ── -->
+        <section id="view-no-business" class="view active">
+          <div class="empty-state">
+            <div class="empty-icon">🏢</div>
+            <h2>Welcome to SupplyPulse</h2>
+            <p>Create your first business to get started managing inventory.</p>
+            <button class="btn btn-primary btn-lg" id="create-first-business-btn">Create Business</button>
+          </div>
+        </section>
+
+        <!-- ── Dashboard ── -->
+        <section id="view-dashboard" class="view">
+          <div class="stats-grid" id="dashboard-stats">
+            <div class="stat-card skeleton-card" id="stat-revenue">
+              <div class="stat-icon">💵</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value" id="stat-revenue-val">—</div>
+              </div>
+            </div>
+            <div class="stat-card" id="stat-profit">
+              <div class="stat-icon">📈</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Profit</div>
+                <div class="stat-value" id="stat-profit-val">—</div>
+              </div>
+            </div>
+            <div class="stat-card" id="stat-sales">
+              <div class="stat-icon">🛒</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Sales</div>
+                <div class="stat-value" id="stat-sales-val">—</div>
+              </div>
+            </div>
+            <div class="stat-card" id="stat-products">
+              <div class="stat-icon">📦</div>
+              <div class="stat-info">
+                <div class="stat-label">Products</div>
+                <div class="stat-value" id="stat-products-val">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header"><h3>Low Stock Alerts</h3></div>
+              <div class="card-body" id="low-stock-list"><div class="empty-hint">No low stock items</div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>Expiring Soon (30 days)</h3></div>
+              <div class="card-body" id="expiring-list"><div class="empty-hint">No expiring items</div></div>
+            </div>
+          </div>
+          <div class="card mt-4">
+            <div class="card-header"><h3>Revenue Overview (Monthly)</h3></div>
+            <div class="card-body">
+              <div class="chart-container"><canvas id="dashboard-chart"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Products ── -->
+        <section id="view-products" class="view">
+          <div class="view-toolbar">
+            <div class="toolbar-left">
+              <input type="text" id="product-search" class="input" placeholder="Search products…" />
+              <select id="category-filter" class="input" title="Filter by category">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-primary" id="add-product-btn">+ Add Product</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body table-wrap" id="products-table-wrap">
+              <div class="empty-hint">No products yet</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Categories ── -->
+        <section id="view-categories" class="view">
+          <div class="card">
+            <div class="card-header"><h3>Product Categories</h3></div>
+            <div class="card-body" id="categories-list"><div class="empty-hint">No categories</div></div>
+          </div>
+        </section>
+
+        <!-- ── Stock Log ── -->
+        <section id="view-stock-log" class="view">
+          <div class="card">
+            <div class="card-header"><h3>Stock Adjustment History</h3></div>
+            <div class="card-body table-wrap" id="stock-log-wrap">
+              <div class="empty-hint">No stock adjustments yet</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Import CSV ── -->
+        <section id="view-import-csv" class="view">
+          <div class="card">
+            <div class="card-header"><h3>Import Products via CSV</h3></div>
+            <div class="card-body">
+              <p class="text-muted mb-4">Upload a CSV file with the following columns:<br />
+                <code>name, sku, category, quantity, price, costPrice, lowStockThreshold, expiryDate, description</code>
+              </p>
+              <div class="upload-area" id="csv-upload-area">
+                <input type="file" id="csv-file-input" accept=".csv" class="file-input" />
+                <div class="upload-icon">📄</div>
+                <p>Click or drag a CSV file here</p>
+              </div>
+              <div id="csv-preview" class="mt-4" style="display:none;">
+                <h4>Preview</h4>
+                <div class="table-wrap" id="csv-preview-table"></div>
+                <button class="btn btn-primary mt-3" id="import-confirm-btn">Import Products</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Record Sale ── -->
+        <section id="view-record-sale" class="view">
+          <div class="card max-w-600">
+            <div class="card-header"><h3>Record a Sale</h3></div>
+            <div class="card-body">
+              <form id="record-sale-form">
+                <div class="form-group">
+                  <label for="sale-product-select">Product</label>
+                  <select id="sale-product-select" class="input" required>
+                    <option value="">Select a product…</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="sale-qty">Quantity</label>
+                  <input type="number" id="sale-qty" class="input" min="1" value="1" required />
+                </div>
+                <div class="form-group">
+                  <label for="sale-note">Note (optional)</label>
+                  <input type="text" id="sale-note" class="input" placeholder="e.g. Walk-in customer" />
+                </div>
+                <div id="sale-preview" class="sale-preview" style="display:none;">
+                  <div class="preview-row"><span>Unit Price:</span><strong id="sale-unit-price">—</strong></div>
+                  <div class="preview-row"><span>Total Revenue:</span><strong id="sale-total-revenue">—</strong></div>
+                  <div class="preview-row"><span>Profit:</span><strong id="sale-profit">—</strong></div>
+                  <div class="preview-row"><span>Available Stock:</span><strong id="sale-stock">—</strong></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block mt-3">Record Sale</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Sales History ── -->
+        <section id="view-sales-history" class="view">
+          <div class="view-toolbar">
+            <div class="toolbar-left">
+              <input type="date" id="sales-from" class="input" title="From date" />
+              <input type="date" id="sales-to" class="input" title="To date" />
+              <select id="sales-period" class="input" title="Period filter">
+                <option value="">All Time</option>
+                <option value="daily">Last 24h</option>
+                <option value="weekly">Last 7 days</option>
+                <option value="monthly">Last 30 days</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-secondary" id="filter-sales-btn">Filter</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body table-wrap" id="sales-table-wrap">
+              <div class="empty-hint">No sales recorded</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Export CSV ── -->
+        <section id="view-export-csv" class="view">
+          <div class="card max-w-600">
+            <div class="card-header"><h3>Export Sales Data</h3></div>
+            <div class="card-body">
+              <p class="text-muted">Download all sales data for this business as a CSV file.</p>
+              <button class="btn btn-primary mt-4" id="export-sales-btn">⬇ Download Sales CSV</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Charts ── -->
+        <section id="view-charts" class="view">
+          <div class="period-tabs" id="chart-tabs">
+            <button class="tab-btn active" data-period="daily">Daily</button>
+            <button class="tab-btn" data-period="weekly">Weekly</button>
+            <button class="tab-btn" data-period="monthly">Monthly</button>
+          </div>
+          <div class="card mt-3">
+            <div class="card-header"><h3 id="chart-title">Daily Revenue</h3></div>
+            <div class="card-body">
+              <div class="chart-container"><canvas id="revenue-chart"></canvas></div>
+            </div>
+          </div>
+          <div class="card mt-4">
+            <div class="card-header"><h3>Profit Over Time</h3></div>
+            <div class="card-body">
+              <div class="chart-container"><canvas id="profit-chart"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Profit Report ── -->
+        <section id="view-profit-report" class="view">
+          <div class="card">
+            <div class="card-header"><h3>Profit Report by Product</h3></div>
+            <div class="card-body table-wrap" id="profit-report-wrap">
+              <div class="empty-hint">No sales data</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Best/Worst Sellers ── -->
+        <section id="view-best-worst" class="view">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h3>🏆 Best Sellers</h3></div>
+              <div class="card-body" id="best-sellers-list"><div class="empty-hint">No data</div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>📉 Worst Sellers</h3></div>
+              <div class="card-body" id="worst-sellers-list"><div class="empty-hint">No data</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── AI Forecast ── -->
+        <section id="view-forecast" class="view">
+          <div class="view-toolbar">
+            <div class="toolbar-left"></div>
+            <div class="toolbar-right">
+              <button class="btn btn-primary" id="refresh-forecast-btn">🔄 Generate Suggestions</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body table-wrap" id="forecast-wrap">
+              <div class="empty-hint">Click "Generate Suggestions" to run AI forecasting</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Settings ── -->
+        <section id="view-settings" class="view">
+          <div class="card max-w-600">
+            <div class="card-header"><h3>Business Settings</h3></div>
+            <div class="card-body">
+              <div id="settings-business-list"></div>
+              <hr class="divider" />
+              <h4 class="mt-4">Appearance</h4>
+              <div class="form-group mt-3">
+                <label>Theme</label>
+                <div class="btn-group">
+                  <button class="btn btn-secondary" id="settings-light-btn">☀️ Light</button>
+                  <button class="btn btn-secondary" id="settings-dark-btn">🌙 Dark</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ── Modals ── -->
+
+  <!-- Product Modal -->
+  <div class="modal-overlay" id="product-modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="product-modal-title">Add Product</h3>
+        <button class="modal-close" id="product-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="product-form">
+          <input type="hidden" id="product-id" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="product-name">Name *</label>
+              <input type="text" id="product-name" class="input" required />
+            </div>
+            <div class="form-group">
+              <label for="product-sku">SKU</label>
+              <input type="text" id="product-sku" class="input" placeholder="Auto-generated if empty" />
+            </div>
+            <div class="form-group">
+              <label for="product-category">Category</label>
+              <input type="text" id="product-category" class="input" placeholder="General" />
+            </div>
+            <div class="form-group">
+              <label for="product-qty">Quantity *</label>
+              <input type="number" id="product-qty" class="input" min="0" required />
+            </div>
+            <div class="form-group">
+              <label for="product-price">Price ($) *</label>
+              <input type="number" id="product-price" class="input" min="0.01" step="0.01" required />
+            </div>
+            <div class="form-group">
+              <label for="product-cost">Cost Price ($)</label>
+              <input type="number" id="product-cost" class="input" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="form-group">
+              <label for="product-threshold">Low Stock Threshold</label>
+              <input type="number" id="product-threshold" class="input" min="0" placeholder="10" />
+            </div>
+            <div class="form-group">
+              <label for="product-expiry">Expiry Date</label>
+              <input type="date" id="product-expiry" class="input" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="product-desc">Description</label>
+            <textarea id="product-desc" class="input" rows="2"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="product-modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="product-modal-submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adjust Stock Modal -->
+  <div class="modal-overlay" id="adjust-modal-overlay" style="display:none;">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>Adjust Stock</h3>
+        <button class="modal-close" id="adjust-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="adjust-form">
+          <input type="hidden" id="adjust-product-id" />
+          <p id="adjust-product-name" class="text-muted mb-3"></p>
+          <div class="form-group">
+            <label for="adjust-amount">Adjustment (+ add / - remove)</label>
+            <input type="number" id="adjust-amount" class="input" placeholder="e.g. 10 or -5" required />
+          </div>
+          <div class="form-group">
+            <label for="adjust-reason">Reason</label>
+            <input type="text" id="adjust-reason" class="input" placeholder="e.g. Restock, Damage" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="adjust-modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Adjust</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Modal -->
+  <div class="modal-overlay" id="business-modal-overlay" style="display:none;">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3 id="business-modal-title">Create Business</h3>
+        <button class="modal-close" id="business-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="business-form">
+          <input type="hidden" id="business-edit-id" />
+          <div class="form-group">
+            <label for="business-name-input">Business Name *</label>
+            <input type="text" id="business-name-input" class="input" required maxlength="100" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="business-modal-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
